@@ -1,0 +1,11 @@
+[package]
+name = "rust_consistent_hash"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+twox-hash = "1.6.0"
+
+[lib]
+name = "rust_consistent_hash"
+path = "src/lib.rs"
