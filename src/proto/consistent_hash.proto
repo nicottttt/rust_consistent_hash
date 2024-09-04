@@ -1,0 +1,33 @@
+syntax = "proto3";
+
+package consistent_hash;
+
+service ConsistentHash {
+  rpc KeyMapServer(MapkeyRequest) returns (MapkeyResponse) {}
+  rpc AddKey(AddkeyRequest) returns (AddkeyResponse) {}
+  rpc RemoveServer(RemoveServerRequest) returns (RemoveServerResponse) {}
+}
+
+message MapkeyRequest {
+  string server = 1;
+}
+
+message MapkeyResponse {
+  string result = 1;
+}
+
+message AddkeyRequest {
+  string key = 1;
+}
+
+message AddkeyResponse {
+  string result = 1;
+}
+
+message RemoveServerRequest {
+  string server = 1;
+}
+
+message RemoveServerResponse {
+  map<string, string> result = 1;
+}

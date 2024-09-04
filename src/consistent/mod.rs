@@ -24,6 +24,7 @@ pub struct Consistent {
     sorted_set: Vec<u64>,
     replication_factor: i32,
     mapping: HashMap<String, String>,
+    serverlist: Vec<String>,
 }
 
 impl Consistent {
@@ -34,6 +35,7 @@ impl Consistent {
             sorted_set: Vec::new(),
             replication_factor,
             mapping: HashMap::new(),
+            serverlist: Vec::new(),
         }
     }
 
@@ -45,21 +47,27 @@ impl Consistent {
         &self.hasher
     }
 
+    pub fn get_mapping(&self) -> HashMap<String, String> {
+        self.mapping.clone()
+    }
+
     pub fn add_server(&mut self, server: String) {
         for i in 0..self.replication_factor {
-            let key = format!("{}{}", server, i).into_bytes();
+            let key = format!("{}{}", server, i).into_bytes(); // Virtual node
             let h = self.hasher.hash_to_used(&key);
-            self.ring.insert(h, server.clone());
+            self.ring.insert(h, server.clone());// maybe can use entry to avoid hash collistion?
             self.sorted_set.push(h);
         }
 
         self.sorted_set.sort();
 
+        self.serverlist.push(server.clone());
+
         if self.mapping.is_empty() {
             return;
         }
 
-        self.redirect_key_from_add_server(server);
+        self.redirect_key_from_add_server(server);// give the ownership of server to the function
     }
 
     fn add_key(&mut self, key: String, server: String) {
@@ -79,10 +87,21 @@ impl Consistent {
     }
 
     pub fn del_server(&mut self, server: String) {
+        // Detect if there is this server or not
+        match self.serverlist.iter().position(|x| *x == server) {
+            Some(idx) => {
+                self.serverlist.remove(idx);
+                println!("Server '{}' was removed.", server);
+            }
+            None => {
+                println!("Server '{}' was not found.", server);
+                return;
+            }
+        }
+
         for i in 0..self.replication_factor {
-            let key = format!("{}{}", server, i).into_bytes();
+            let key = format!("{}{}", server, i).into_bytes();// Virtual node
             let h = self.hasher.hash_to_used(&key);
-            self.ring.remove(&h);
             self.del_slice(h);
         }
 
@@ -108,8 +127,7 @@ impl Consistent {
     fn redirect_key_from_remove_server(&mut self, server: String) {
         for (k, v) in self.mapping.clone() {
             if v == server {
-                let tmp_key = self.map_key(&k);
-                self.add_key(k, tmp_key);
+                self.add_key_public(k);
             }
         }
     }
@@ -119,7 +137,7 @@ impl Consistent {
         let hash = self.hasher.hash_to_used(key);
         // println!("hash is {}", hash);
 
-        let idx = match self.sorted_set.binary_search(&hash) {
+        let idx = match self.sorted_set.binary_search(&hash) {// Search in the server hash
             Ok(idx) | Err(idx) => idx,
         };
 
@@ -151,4 +169,30 @@ impl Consistent {
             println!("Key {}, Server {}", key, server);
         }
     }
+
+    pub fn traverse_serverlist(&self) {
+        for server in &self.serverlist {
+            println!("Server {}", server);
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_del_key() {
+        let mut c = Consistent::new_ring(15);
+        c.add_server("Server1".to_string());
+        c.add_server("Server2".to_string());
+        c.add_server("Server3".to_string());
+        c.add_server("Server4".to_string());
+        let key = "key2222";
+        c.add_key_public(key.to_string()); 
+
+        assert!(c.mapping[key] == "Server4".to_string());
+
+    }
+
 }

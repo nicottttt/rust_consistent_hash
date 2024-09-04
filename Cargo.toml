@@ -5,7 +5,17 @@ edition = "2021"
 
 [dependencies]
 twox-hash = "1.6.0"
+prost = "0.12"
+prost-types = "0.12"
+tonic = "0.10"
+tonic-build = "0.10"
+tokio = { version = "1", features = ["full"] }
+protobuf = "3.5.0"
+uuid = { version = "0.8", features = ["v4"] }
+
+[build-dependencies]
+tonic-build = "0.10"
 
 [lib]
 name = "rust_consistent_hash"
-path = "src/lib.rs"
+path = "src/lib.rs" 
